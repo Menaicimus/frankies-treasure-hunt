@@ -1,8 +1,16 @@
 import { distance, bearing, distanceHue, arrowAngle } from './geo.mjs';
+import { createHuntMap } from './hunt-map.js';
 const $ = id => document.getElementById(id);
 let points = [], index = 0, pos = null, compass = null, gpsHeading = null, watch = null;
 let orientationStarted = false, orientationDenied = false, sensorError = '', scanController = null;
 let db, updateDoc, doc, unsubscribe, saving = false;
+let huntMap;
+function navigate(step) {
+  if (!points.length) return;
+  index = (index + step + points.length) % points.length;
+  if (!saving) $('message').textContent = '';
+  render();
+}
 const current = () => points[index];
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 async function load() {
@@ -15,6 +23,7 @@ async function load() {
     db = firebase.db; ({ updateDoc, doc } = firestore);
     await firebase.auth.authStateReady();
     if (!firebase.auth.currentUser) await authentication.signInAnonymously(firebase.auth);
+    if (!huntMap) huntMap = createHuntMap({ db, firestore, getPosition: () => pos, navigate, beforeOpen: stopScan });
     unsubscribe?.();
     unsubscribe = firestore.onSnapshot(firestore.query(firestore.collection(db, 'objetivos'), firestore.orderBy('ordem')), { includeMetadataChanges: true }, snapshot => {
       const selected = current()?.id;
@@ -22,6 +31,7 @@ async function load() {
       index = Math.max(0, points.findIndex(p => p.id === selected));
       $('scan').disabled = !points.length || saving;
       if (!points.length) {
+        huntMap.setPoint(null, 0);
         $('progress').textContent = 'Ainda não há pontos.'; $('point-name').textContent = 'A aventura está a ser preparada';
         $('clue').textContent = 'Adiciona o primeiro ponto na administração.';
         $('previous').disabled = $('next').disabled = true; $('point-status').hidden = true;
@@ -40,6 +50,7 @@ function fail(error) {
 }
 function render() {
   const p = current();
+  huntMap?.setPoint(p, points.length);
   $('progress').textContent = `${points.filter(p => p.encontrado === true).length} de ${points.length} pontos encontrados`;
   $('position').textContent = `PONTO ${String(index + 1).padStart(2, '0')} / ${String(points.length).padStart(2, '0')}`;
   $('point-name').textContent = p.nome;
@@ -114,9 +125,7 @@ $('enable-location').onclick = async () => {
   }, e => { sensorError = e.code === 1 ? 'Permite o acesso à localização nas definições do navegador e tenta novamente.' : 'Sem sinal GPS. Aproxima-te de uma zona aberta e tenta novamente.'; update(); }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
   update();
 };
-for (const [id, step] of [['previous', -1], ['next', 1]]) $(id).onclick = () => {
-  index = (index + step + points.length) % points.length; if (!saving) $('message').textContent = ''; render();
-};
+for (const [id, step] of [['previous', -1], ['next', 1]]) $(id).onclick = () => navigate(step);
 function stopScan() {
   scanController?.abort(); scanController = null;
   $('scan').classList.remove('scanning'); $('scan').querySelector('span').textContent = 'Ler NFC';

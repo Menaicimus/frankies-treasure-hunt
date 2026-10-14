@@ -2,7 +2,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function admin() {
-      return request.auth != null && request.auth.uid == "zkck7p3lrCSwQAJu0MKDs5USFo02";
+      return request.auth != null && request.auth.uid == "7Vfs8c3XevgZLcZSOwXBmUg5Zue2";
+    }
+    match /mapas/{id} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && exists(/databases/$(database)/documents/objetivos/$(id))
+        && get(/databases/$(database)/documents/objetivos/$(id)).data.modo in ['distancia', 'direcao']
+        && request.resource.data.keys().hasOnly(['desenhos'])
+        && request.resource.data.desenhos is list
+        && request.resource.data.desenhos.size() <= 100;
+      allow delete: if admin();
     }
     match /objetivos/{id} {
       allow read: if request.auth != null;
