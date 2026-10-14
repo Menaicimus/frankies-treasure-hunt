@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0f172a">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=final-20261014-1">
 <title>Admin · Frankie's treasure hunt</title>
 </head>
 <body>
@@ -21,6 +21,21 @@
 
   <section id="painel" hidden>
     <div class="topo"><span id="quem" class="peq"></span><button id="sair" class="sec">Sair</button></div>
+
+    <section class="final-admin">
+      <h2>✦ Localização final</h2>
+      <p class="peq">Aparece ao jogador quando todos os pontos estiverem encontrados.</p>
+      <form id="final-form">
+        <label for="final-admin-text">Texto da localização final</label>
+        <textarea id="final-admin-text" rows="4" maxlength="5000" required placeholder="Ex.: O tesouro está à tua espera junto à árvore…"></textarea>
+        <label for="final-admin-image">Endereço da imagem final</label>
+        <input id="final-admin-image" maxlength="2000" placeholder="imagens/tesouro.jpg ou https://…">
+        <p class="peq">Carrega a fotografia no GitHub e escreve aqui o nome do ficheiro, como nas pistas de imagem. Podes deixar vazio se ainda não tiveres imagem.</p>
+        <img id="final-admin-preview" class="image-preview" alt="Pré-visualização da imagem final" hidden>
+        <button id="save-final" type="submit" disabled>Guardar localização final</button>
+      </form>
+      <p id="final-admin-message" class="peq" role="status"></p>
+    </section>
 
     <h2 id="tituloForm">Novo objetivo</h2>
     <form id="form">
@@ -50,7 +65,7 @@
 <script type="module">
 import { auth, db } from "./firebase.js";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, writeBatch, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
 const aviso = t => { $("msg").textContent = t; };
@@ -70,6 +85,7 @@ onAuthStateChanged(auth, u => {
   $("painel").hidden = !isAdminSession;
   unsub?.(); unsub = null;
   if (isAdminSession) {
+    loadFinal(u.uid);
     $("quem").textContent = u.email;
     unsub = onSnapshot(
       query(collection(db, "objetivos"), orderBy("ordem")),
@@ -80,6 +96,47 @@ onAuthStateChanged(auth, u => {
     unsub?.(); unsub = null; objs = [];
   }
 });
+
+async function loadFinal(uid) {
+  $("save-final").disabled = true;
+  $("final-admin-message").textContent = "A carregar a configuração final…";
+  try {
+    const snapshot = await getDoc(doc(db, "configuracao", "final"));
+    if (auth.currentUser?.uid !== uid) return;
+    const data = snapshot.exists() ? snapshot.data() : {};
+    $("final-admin-text").value = data.texto || "";
+    $("final-admin-image").value = data.imagem || "";
+    finalPreview(); $("final-admin-message").textContent = "";
+  } catch (error) {
+    $("final-admin-message").textContent = "Não foi possível ler a configuração. Confirma as novas regras do Firebase. (" + error.code + ")";
+  } finally { if (auth.currentUser?.uid === uid) $("save-final").disabled = false; }
+}
+function finalPreview() {
+  const value = $("final-admin-image").value.trim();
+  $("final-admin-preview").hidden = true;
+  if (!value) return;
+  try { $("final-admin-preview").src = imageUrl(value); $("final-admin-preview").hidden = false; }
+  catch { $("final-admin-message").textContent = "Usa um endereço HTTPS ou o nome de uma imagem deste site."; }
+}
+$("final-admin-image").oninput = finalPreview;
+$("final-admin-preview").onerror = () => {
+  $("final-admin-preview").hidden = true;
+  $("final-admin-message").textContent = "A imagem não carregou. Verifica o endereço antes de guardar.";
+};
+$("final-form").onsubmit = async event => {
+  event.preventDefault();
+  const texto = $("final-admin-text").value.trim(), imagem = $("final-admin-image").value.trim();
+  if (!texto) { $("final-admin-message").textContent = "Preenche o texto da localização final."; return; }
+  try { if (imagem) imageUrl(imagem); }
+  catch (error) { $("final-admin-message").textContent = error.message; return; }
+  $("save-final").disabled = true;
+  $("final-admin-message").textContent = "A guardar…";
+  try {
+    await setDoc(doc(db, "configuracao", "final"), { texto, imagem });
+    $("final-admin-message").textContent = "Localização final guardada online.";
+  } catch (error) { $("final-admin-message").textContent = "Erro ao guardar a localização final: " + error.message; }
+  finally { $("save-final").disabled = false; }
+};
 
 // ---------- formulário ----------
 const gerarCodigo = () => crypto.randomUUID().replace(/-/g, "").slice(0, 10);

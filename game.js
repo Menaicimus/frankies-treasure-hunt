@@ -1,10 +1,12 @@
 import { distance, bearing, distanceHue, arrowAngle } from './geo.mjs';
 import { createHuntMap } from './hunt-map.js';
+import { createFinale } from './finale.mjs';
 const $ = id => document.getElementById(id);
 let points = [], index = 0, pos = null, compass = null, gpsHeading = null, watch = null;
 let orientationStarted = false, orientationDenied = false, sensorError = '', scanController = null;
 let db, updateDoc, doc, unsubscribe, saving = false;
 let huntMap;
+let finale;
 function navigate(step) {
   if (!points.length) return;
   index = (index + step + points.length) % points.length;
@@ -24,6 +26,10 @@ async function load() {
     await firebase.auth.authStateReady();
     if (!firebase.auth.currentUser) await authentication.signInAnonymously(firebase.auth);
     if (!huntMap) huntMap = createHuntMap({ db, firestore, getPosition: () => pos, navigate, beforeOpen: stopScan });
+    if (!finale) finale = createFinale({ db, firestore,
+      beforeShow: () => { stopScan(); if ($('map-dialog').open) $('map-dialog').close(); },
+      restorePoints: () => { if (points.length) render(); }
+    });
     unsubscribe?.();
     unsubscribe = firestore.onSnapshot(firestore.query(firestore.collection(db, 'objetivos'), firestore.orderBy('ordem')), { includeMetadataChanges: true }, snapshot => {
       const selected = current()?.id;
@@ -31,6 +37,7 @@ async function load() {
       index = Math.max(0, points.findIndex(p => p.id === selected));
       $('scan').disabled = !points.length || saving;
       if (!points.length) {
+        finale.sync(points, true);
         huntMap.setPoint(null, 0);
         $('progress').textContent = 'Ainda não há pontos.'; $('point-name').textContent = 'A aventura está a ser preparada';
         $('clue').textContent = 'Adiciona o primeiro ponto na administração.';
@@ -38,6 +45,7 @@ async function load() {
         $('enable-location').hidden = true; $('sensor-status').textContent = ''; return;
       }
       render();
+      finale.sync(points, !snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites);
       if (snapshot.metadata.fromCache) $('message').textContent = 'Sem confirmação do servidor. Verifica a ligação para sincronizar o estado.';
       else if (!saving && $('message').textContent.startsWith('Sem confirmação')) $('message').textContent = '';
     }, fail);
@@ -51,6 +59,7 @@ function fail(error) {
 function render() {
   const p = current();
   huntMap?.setPoint(p, points.length);
+  if (finale?.visible()) $('open-map').hidden = true;
   $('progress').textContent = `${points.filter(p => p.encontrado === true).length} de ${points.length} pontos encontrados`;
   $('position').textContent = `PONTO ${String(index + 1).padStart(2, '0')} / ${String(points.length).padStart(2, '0')}`;
   $('point-name').textContent = p.nome;
