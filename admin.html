@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f172a">
+<link rel="stylesheet" href="style.css">
+<title>Admin · Frankie's treasure hunt</title>
+</head>
+<body>
+<main>
+  <h1>Frankie's treasure hunt · Admin</h1>
+  <p class="admin-intro">Gere as pistas e o estado global do jogo. As alterações aparecem automaticamente no ecrã do jogador.</p>
+
+  <section id="login" hidden>
+    <input id="email" type="email" placeholder="Email" autocomplete="username">
+    <input id="pass" type="password" placeholder="Palavra-passe" autocomplete="current-password">
+    <button id="entrar">Entrar</button>
+    <p id="loginErro" class="erro"></p>
+  </section>
+
+  <section id="painel" hidden>
+    <div class="topo"><span id="quem" class="peq"></span><button id="sair" class="sec">Sair</button></div>
+
+    <h2 id="tituloForm">Novo objetivo</h2>
+    <form id="form">
+      <label for="nome">Nome do ponto</label><input id="nome" placeholder="Ex.: O jardim secreto" required>
+      <label for="modo">Tipo de pista</label>
+      <select id="modo">
+        <option value="distancia">Mostrar a distância</option>
+        <option value="direcao">Mostrar a direção (seta)</option>
+        <option value="imagem">Mostrar uma imagem pista</option>
+      </select>
+      <div id="gpsFields"><label for="coords">Coordenadas GPS</label><input id="coords" placeholder="Coordenadas (ex.: 38.7223, -9.1393)" inputmode="text" required>
+      <button type="button" id="gps" class="sec">📍 Usar a minha localização atual</button>
+      </div>
+      <div id="imageFields" hidden><label for="imagem">Endereço da imagem</label><input id="imagem" placeholder="imagens/jardim.jpg ou https://…">
+      <p class="peq">Usa um ficheiro da pasta imagens do site ou um endereço HTTPS direto para uma imagem pública.</p><img id="preview" class="image-preview" alt="Pré-visualização da pista" hidden></div>
+      <label for="encontrado">Estado do ponto</label><select id="encontrado"><option value="false">Não encontrado</option><option value="true">Encontrado</option></select>
+      <button id="guardar" type="submit">Adicionar no fim da lista</button>
+      <button id="cancelar" type="button" class="sec" hidden>Cancelar edição</button>
+    </form>
+    <p id="msg" class="peq"></p>
+
+    <h2>Objetivos (por ordem)</h2>
+    <div id="lista"></div>
+  </section>
+</main>
+
+<script type="module">
+import { auth, db } from "./firebase.js";
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const aviso = t => { $("msg").textContent = t; };
+let objs = [], editId = null, unsub = null;
+
+// ---------- login ----------
+$("entrar").onclick = async () => {
+  $("loginErro").textContent = "";
+  try { await signInWithEmailAndPassword(auth, $("email").value.trim(), $("pass").value); }
+  catch { $("loginErro").textContent = "Email ou palavra-passe errados."; }
+};
+$("sair").onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, u => {
+  const isAdminSession = u && !u.isAnonymous;
+  $("login").hidden = !!isAdminSession;
+  $("painel").hidden = !isAdminSession;
+  unsub?.(); unsub = null;
+  if (isAdminSession) {
+    $("quem").textContent = u.email;
+    unsub = onSnapshot(
+      query(collection(db, "objetivos"), orderBy("ordem")),
+      s => { objs = s.docs.map(d => ({ ...d.data(), id: d.id })); desenhar(); },
+      e => aviso("Erro a ler a lista: " + e.message)
+    );
+  } else {
+    unsub?.(); unsub = null; objs = [];
+  }
+});
+
+// ---------- formulário ----------
+const gerarCodigo = () => crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+function fields() {
+  const image = $("modo").value === "imagem";
+  $("gpsFields").hidden = image; $("coords").required = !image;
+  $("imageFields").hidden = !image; $("imagem").required = image;
+}
+function imageUrl(value) {
+  const url = new URL(value, location.href);
+  if (!value || (url.protocol !== "https:" && url.origin !== location.origin)) throw new Error("Usa um endereço HTTPS ou um caminho de imagem deste site.");
+  return url.href;
+}
+$("modo").onchange = fields;
+$("imagem").oninput = () => {
+  try { $("preview").src = imageUrl($("imagem").value.trim()); $("preview").hidden = false; }
+  catch { $("preview").hidden = true; }
+};
+$("preview").onerror = () => { $("preview").hidden = true; aviso("Não foi possível carregar a imagem. Verifica o endereço."); };
+
+function limpar() {
+  editId = null;
+  $("form").reset();
+  fields(); $("preview").hidden = true;
+  $("tituloForm").textContent = "Novo objetivo";
+  $("guardar").textContent = "Adicionar no fim da lista";
+  $("cancelar").hidden = true;
+}
+$("cancelar").onclick = () => { limpar(); aviso(""); };
+
+$("gps").onclick = () => {
+  if (!navigator.geolocation) { aviso("Este navegador não suporta localização."); return; }
+  aviso("A obter localização…");
+  navigator.geolocation.getCurrentPosition(
+    p => { $("coords").value = `${p.coords.latitude.toFixed(6)}, ${p.coords.longitude.toFixed(6)}`; aviso("Localização preenchida."); },
+    () => aviso("Não consegui obter a localização. Permite o acesso ao GPS."),
+    { enableHighAccuracy: true, timeout: 20000 }
+  );
+};
+
+$("form").onsubmit = async e => {
+  e.preventDefault();
+  const dados = { nome: $("nome").value.trim(), modo: $("modo").value, encontrado: $("encontrado").value === "true" };
+  if (!dados.nome) { aviso("Preenche o nome do ponto."); return; }
+  if (dados.modo === "imagem") {
+    try { imageUrl($("imagem").value.trim()); dados.imagem = $("imagem").value.trim(); }
+    catch (error) { aviso(error.message); return; }
+  } else {
+    const m = $("coords").value.match(/^\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (!m) { aviso("Coordenadas inválidas. Exemplo: 38.7223, -9.1393 (com ponto nos decimais)."); return; }
+    dados.lat = +m[1]; dados.lng = +m[2];
+    if (Math.abs(dados.lat) > 90 || Math.abs(dados.lng) > 180) { aviso("Coordenadas fora dos limites."); return; }
+  }
+  $("guardar").disabled = true;
+  try {
+    if (editId) {
+      await updateDoc(doc(db, "objetivos", editId), dados);
+      aviso("Alterações guardadas.");
+    } else {
+      const max = objs.reduce((m, o) => Math.max(m, o.ordem || 0), 0);
+      await addDoc(collection(db, "objetivos"), { ...dados, ordem: max + 1, codigo: gerarCodigo() });
+      aviso("Adicionado. Usa «Gravar tag» para escrever o código numa tag NFC.");
+    }
+    limpar();
+  } catch (err) {
+    aviso("Erro ao guardar: " + err.message);
+  } finally { $("guardar").disabled = false; }
+};
+
+// ---------- lista ----------
+function desenhar() {
+  const l = $("lista");
+  l.replaceChildren();
+  if (!objs.length) { l.textContent = "Ainda não há objetivos."; return; }
+  objs.forEach((o, i) => {
+    const d = document.createElement("div"); d.className = "item";
+    const t = document.createElement("strong"); t.textContent = `${i + 1}. ${o.nome}`;
+    const s = document.createElement("div"); s.className = "peq";
+    s.textContent = `${o.modo === "imagem" ? "Imagem pista" : `${o.lat}, ${o.lng} · ${o.modo === "distancia" ? "distância" : "direção"}`} · ${o.encontrado === true ? "✓ Encontrado" : "○ Não encontrado"}`;
+    const a = document.createElement("div"); a.className = "acoes";
+    const b = (txt, fn, dis) => {
+      const x = document.createElement("button");
+      x.className = "sec"; x.textContent = txt; x.disabled = !!dis; x.onclick = fn; a.append(x);
+    };
+    b("▲", () => mover(i, -1), i === 0);
+    b("▼", () => mover(i, 1), i === objs.length - 1);
+    b("✏️ Editar", () => editar(o));
+    b(o.encontrado === true ? "Marcar não encontrado" : "Marcar encontrado", async () => {
+      try { await updateDoc(doc(db, "objetivos", o.id), { encontrado: o.encontrado !== true }); aviso("Estado atualizado online."); }
+      catch (error) { aviso("Erro ao alterar o estado: " + error.message); }
+    });
+    b("📲 Gravar tag", () => gravarTag(o));
+    b("🗑", () => apagar(o));
+    d.append(t, s, a);
+    l.append(d);
+  });
+}
+
+async function mover(i, dir) {
+  const a = objs[i], b = objs[i + dir];
+  if (!b) return;
+  const batch = writeBatch(db);
+  batch.update(doc(db, "objetivos", a.id), { ordem: b.ordem });
+  batch.update(doc(db, "objetivos", b.id), { ordem: a.ordem });
+  try { await batch.commit(); } catch (e) { aviso("Erro ao mover: " + e.message); }
+}
+
+function editar(o) {
+  editId = o.id;
+  $("nome").value = o.nome;
+  $("coords").value = typeof o.lat === "number" ? `${o.lat}, ${o.lng}` : "";
+  $("modo").value = o.modo;
+  $("imagem").value = o.imagem || "";
+  $("encontrado").value = o.encontrado === true ? "true" : "false";
+  fields(); $("preview").hidden = true;
+  if (o.modo === "imagem") $("imagem").oninput();
+  $("tituloForm").textContent = "Editar objetivo";
+  $("guardar").textContent = "Guardar alterações";
+  $("cancelar").hidden = false;
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function apagar(o) {
+  if (!confirm(`Apagar «${o.nome}»?`)) return;
+  try { await deleteDoc(doc(db, "objetivos", o.id)); if (editId === o.id) limpar(); }
+  catch (e) { aviso("Erro ao apagar: " + e.message); }
+}
+
+async function gravarTag(o) {
+  if (!("NDEFReader" in window)) { aviso("Este navegador não suporta NFC. Usa o Chrome no Android."); return; }
+  aviso(`Aproxima uma tag NFC do telemóvel para gravar «${o.nome}»…`);
+  try {
+    const w = new NDEFReader();
+    await w.write({ records: [{ recordType: "text", data: o.codigo }] });
+    aviso(`✅ Tag gravada para «${o.nome}». Cola-a no local do objetivo.`);
+  } catch (e) {
+    aviso("Falhou a gravação: " + e.message);
+  }
+}
+</script>
+</body>
+</html>

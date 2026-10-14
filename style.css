@@ -1,0 +1,59 @@
+:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mut:#94a3b8;--ac:#22c55e;--err:#f87171}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif}
+main{max-width:520px;margin:0 auto;padding:16px}
+h1{font-size:1.4rem;margin:.2em 0 .8em}
+h2{font-size:1.1rem}
+button{background:var(--ac);color:#04210f;border:0;border-radius:12px;padding:14px 16px;font-size:1rem;font-weight:600;width:100%;margin:6px 0;cursor:pointer}
+button:disabled{opacity:.4}
+button.sec{background:var(--card);color:var(--tx);border:1px solid #334155}
+input,select{width:100%;padding:12px;margin:6px 0;border-radius:10px;border:1px solid #334155;background:var(--card);color:var(--tx);font-size:1rem}
+.peq{color:var(--mut);font-size:.9rem}
+.erro{color:var(--err)}
+.centro{text-align:center}
+.dist{font-size:4rem;font-weight:700;text-align:center;margin:.6em 0}
+.seta{width:200px;height:200px;margin:1em auto;transition:transform .2s}
+.seta svg{width:100%;height:100%}
+.item{background:var(--card);border-radius:12px;padding:12px;margin:8px 0}
+.acoes{display:flex;gap:6px;flex-wrap:wrap}
+.acoes button{width:auto;padding:8px 12px;margin:4px 0;font-size:.9rem}
+.topo{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.topo button{width:auto}
+[hidden]{display:none!important}
+/* Player */
+.player{--bg:#101b19;--card:#1b2925;--tx:#f4f0df;--mut:#a7b8ae;--ac:#c9e79b;background:radial-gradient(ellipse at 50% 40%,#23352a 0,transparent 62%),var(--bg);min-height:100svh}
+.hunt{max-width:640px;padding:38px 24px 130px;min-height:100svh;display:flex;flex-direction:column;align-items:center}
+.hunt-header{text-align:center;width:100%;border-bottom:1px solid #ffffff17;padding-bottom:24px}
+.eyebrow{font-size:.63rem;letter-spacing:.19em;color:var(--mut);font-weight:650}
+.hunt-header h1{font-family:Georgia,serif;font-weight:400;font-size:clamp(1.8rem,6vw,2.65rem);line-height:1.15;margin:18px 0 12px}
+.hunt-header h1 span{display:block;color:var(--ac);font-size:1.25rem;margin-top:14px}
+.hunt-header .peq{margin:0;font-size:.8rem}
+.point-nav{display:grid;grid-template-columns:46px minmax(0,1fr) 46px;align-items:center;width:100%;gap:12px;margin-top:27px;text-align:center}
+.point-nav h2{font-size:1.25rem;font-weight:500;margin:8px 0;overflow-wrap:anywhere}
+.nav-button{width:44px;height:44px;border:1px solid #ffffff28;border-radius:50%;background:transparent;color:var(--tx);padding:0;margin:0;font-size:1.3rem}
+.nav-button:hover{background:#ffffff0d}
+.status-row{min-height:40px;display:flex;align-items:center;justify-content:center}
+.status{font-size:.75rem;border-radius:30px;padding:6px 12px;background:#ffffff09;color:#c4c8bd;border:1px solid #ffffff18}
+.status.found{background:#bbdf8c16;color:#c9e79b;border-color:#c9e79b55}
+.clue{width:100%;min-height:290px;display:flex;align-items:center;justify-content:center;text-align:center;margin:25px 0 12px}
+.distance-ring,.compass{width:min(290px,73vw);height:min(290px,73vw);border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative}
+.distance-ring{--proximity:#84968a;border:11px solid var(--proximity);box-shadow:0 0 0 12px #ffffff03,inset 0 0 35px #ffffff04;transition:border-color .5s;color:var(--proximity)}
+.distance-ring strong{display:block;font-size:clamp(2.7rem,13vw,4.1rem);font-weight:400;line-height:1.1;letter-spacing:-.05em}
+.distance-ring span{display:block;color:var(--tx);font-size:.95rem;margin-top:6px}
+.distance-ring small{display:block;font-size:.6rem;letter-spacing:.18em;color:var(--mut);margin-top:22px}
+.compass{border:1px solid #c9e79b44;box-shadow:0 0 0 12px #ffffff02;background:repeating-conic-gradient(from 0deg,#b8c99555 0deg 1deg,transparent 1deg 15deg);isolation:isolate}
+.compass:before{content:'';position:absolute;inset:10px;background:#1c2d24;border-radius:50%;z-index:-1}
+.compass-top,.compass-bottom{position:absolute;font-size:.55rem;letter-spacing:.15em;color:var(--mut);left:0;right:0}
+.compass-top{top:34px}.compass-bottom{bottom:34px}.direction-arrow{width:140px;height:140px;color:var(--ac)}.direction-arrow svg{width:100%;height:100%}
+.image-clue{width:100%;max-height:380px;object-fit:contain;border-radius:18px;background:#ffffff05;border:1px solid #ffffff1c}
+.sensor-status{color:var(--mut);font-size:.8rem;text-align:center;max-width:350px;min-height:36px;margin:8px 0}
+.sensor-button{max-width:350px;font-size:.8rem;padding:12px}.feedback{font-size:.85rem;text-align:center;max-width:390px;color:var(--ac);min-height:24px}
+.hunt-footer{width:100%;display:flex;gap:15px;justify-content:space-between;border-top:1px solid #ffffff17;padding-top:20px;margin-top:auto;color:var(--mut);font-size:.65rem}.hunt-footer span:last-child{font-size:.55rem;letter-spacing:.1em}
+.nfc-button{position:fixed;bottom:max(22px,env(safe-area-inset-bottom));left:max(20px,env(safe-area-inset-left));width:76px;height:76px;margin:0;background:var(--ac);border-radius:23px;box-shadow:0 6px 24px #0005;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px;color:#18271b;z-index:2}
+.nfc-button svg{width:30px;height:30px}.nfc-button span{font-size:.65rem}.nfc-button.scanning{background:#ffe4a3}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e8ca77;outline-offset:4px}
+label{display:block;font-size:.85rem;margin-top:12px}.admin-intro{color:var(--mut);font-size:.85rem}.image-preview{max-width:100%;max-height:180px;border-radius:10px;display:block;margin:10px auto}
+@media(max-width:380px){.hunt{padding:24px 16px 120px}.clue{min-height:250px;margin-top:15px}.hunt-footer{font-size:.6rem}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+/* Reserva espaço para o botão NFC, mesmo em ecrãs baixos. */
+.hunt-footer{padding-left:86px;min-height:44px}

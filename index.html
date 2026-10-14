@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101b19"><link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png"><link rel="stylesheet" href="style.css"><title>Frankie's treasure hunt</title></head>
+<body class="player"><main class="hunt">
+<header class="hunt-header"><span class="eyebrow">EXPLORA · DESCOBRE · COLECIONA</span><h1>Frankie's treasure hunt<span aria-hidden="true">✦</span></h1><p id="progress" class="peq">A carregar os pontos…</p></header>
+<nav class="point-nav" aria-label="Escolher ponto"><button id="previous" class="nav-button" aria-label="Ponto anterior" disabled>←</button><div><p id="position" class="eyebrow"></p><h2 id="point-name">A aventura está à tua espera</h2></div><button id="next" class="nav-button" aria-label="Ponto seguinte" disabled>→</button></nav>
+<div class="status-row"><span id="point-status" class="status" hidden></span></div>
+<section id="clue" class="clue" aria-label="Pista do ponto"><p class="peq">A ligar ao jogo…</p></section>
+<p id="sensor-status" class="sensor-status" role="status"></p><button id="enable-location" class="sec sensor-button" hidden>Ativar localização e orientação</button><button id="retry" class="sec sensor-button" hidden>Tentar novamente</button>
+<p id="message" class="feedback" role="status" aria-live="polite"></p><footer class="hunt-footer"><span>Segue a curiosidade.</span><span id="clue-label">A TUA AVENTURA</span></footer>
+</main><button id="scan" class="nfc-button" aria-label="Ler tag NFC" disabled><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M9 7H5v18h4M23 7h4v18h-4M11 22V10l10 12V10M14 5a13 13 0 0 1 0 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ler NFC</span></button><script type="module" src="game.js"></script></body></html>
