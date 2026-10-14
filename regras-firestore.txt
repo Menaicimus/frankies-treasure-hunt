@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function admin() {
-      return request.auth != null && request.auth.uid == "UID_DO_ADMIN";
+      return request.auth != null && request.auth.uid == "zkck7p3lrCSwQAJu0MKDs5USFo02";
     }
     match /objetivos/{id} {
       allow read: if request.auth != null;
